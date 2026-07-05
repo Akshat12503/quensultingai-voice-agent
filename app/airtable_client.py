@@ -7,6 +7,28 @@ AIRTABLE_API_URL = (
     f"https://api.airtable.com/v0/{settings.airtable_base_id}/{settings.airtable_table_name}"
 )
 
+VALID_SERVICES = [
+    "Dental Cleaning",
+    "Root Canal Treatment",
+    "Teeth Whitening",
+    "Braces Consultation",
+    "Tooth Extraction",
+    "General Dental Consultation",
+]
+
+
+def normalize_service_name(raw_service: str) -> str:
+    """
+    Matches an incoming service string (any case/spacing) to the exact
+    canonical Airtable Single Select option. Falls back to the original
+    string if no match is found (Airtable will then reject it clearly).
+    """
+    normalized = raw_service.strip().lower()
+    for valid_option in VALID_SERVICES:
+        if valid_option.lower() == normalized:
+            return valid_option
+    return raw_service
+
 
 def save_booking_to_airtable(booking: BookingRequest) -> str:
     """
@@ -23,7 +45,7 @@ def save_booking_to_airtable(booking: BookingRequest) -> str:
         "fields": {
             "Name": booking.name,
             "Phone": booking.phone,
-            "Service": booking.service,
+            "Service": normalize_service_name(booking.service),
             "Appointment Date": booking.date,
             "Appointment Time": booking.time,
             "Notes": booking.notes or "",
