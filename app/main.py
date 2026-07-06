@@ -49,28 +49,37 @@ async def book_appointment(
     try:
         booking = BookingRequest(**booking_data)
     except Exception as e:
-        logger.error(f"Invalid booking payload: {e}")
+        logger.exception("Invalid booking payload")
         raise HTTPException(status_code=400, detail="Invalid booking payload")
 
-    logger.info(f"Received booking request for {booking.name} - {booking.service}")
+    logger.info(
+        f"Received booking request for {booking.name} - {booking.service}"
+    )
 
     # Save booking to Airtable
     try:
         record_id = save_booking_to_airtable(booking)
-        logger.info(f"Saved booking to Airtable with record ID {record_id}")
-    except Exception as e:
+        logger.info(
+            f"Saved booking to Airtable with record ID {record_id}"
+        )
+    except Exception:
         logger.exception("Airtable save failed")
         raise HTTPException(
             status_code=502,
-            detail=f"Failed to save booking: {str(e)}",
+            detail="Failed to save booking.",
         )
 
     # Send confirmation email
     try:
+        logger.info("Sending confirmation email...")
+
         send_confirmation_email(booking)
-        logger.info("Confirmation email sent")
-    except Exception as e:
+
+        logger.info("Confirmation email sent successfully.")
+
+    except Exception:
         logger.exception("Email sending failed")
+
         return BookingResponse(
             success=True,
             message="Booking saved successfully, but confirmation email failed.",

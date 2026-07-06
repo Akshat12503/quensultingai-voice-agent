@@ -1,76 +1,74 @@
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 
 from app.config import settings
 from app.models import BookingRequest
 
 
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587
-
-
-import logging
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-
-from app.config import settings
-from app.models import BookingRequest
-
-logger = logging.getLogger(__name__)
-
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587
+RESEND_API_URL = "https://api.resend.com/emails"
 
 
 def send_confirmation_email(
     booking: BookingRequest,
     to_email: str | None = None,
-):
+) -> None:
+    """
+    Sends a booking confirmation email using the Resend API.
+    """
+
     recipient = to_email or settings.gmail_address
 
-    message = MIMEMultipart()
-    message["From"] = settings.gmail_address
-    message["To"] = recipient
-    message["Subject"] = f"Appointment Confirmed - {booking.name}"
+    payload = {
+        "from": "QuensultingAI Dental Clinic <onboarding@resend.dev>",
+        "to": [recipient],
+        "subject": f"Appointment Confirmed - {booking.name}",
+        "html": f"""
+        <h2>Appointment Confirmation</h2>
 
-    body = f"""
-Patient: {booking.name}
-Phone: {booking.phone}
-Service: {booking.service}
-Date: {booking.date}
-Time: {booking.time}
-Notes: {booking.notes}
-"""
+        <p>A new appointment has been booked.</p>
 
-    message.attach(MIMEText(body, "plain"))
+        <table border="1" cellpadding="8" cellspacing="0">
+            <tr>
+                <td><b>Name</b></td>
+                <td>{booking.name}</td>
+            </tr>
+            <tr>
+                <td><b>Phone</b></td>
+                <td>{booking.phone}</td>
+            </tr>
+            <tr>
+                <td><b>Service</b></td>
+                <td>{booking.service}</td>
+            </tr>
+            <tr>
+                <td><b>Date</b></td>
+                <td>{booking.date}</td>
+            </tr>
+            <tr>
+                <td><b>Time</b></td>
+                <td>{booking.time}</td>
+            </tr>
+            <tr>
+                <td><b>Notes</b></td>
+                <td>{booking.notes or "None"}</td>
+            </tr>
+        </table>
 
-    logger.info("Connecting to Gmail...")
+        <br>
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=8) as server:
+        <p>This appointment was booked through the AI Voice Receptionist.</p>
+        """,
+    }
 
-        logger.info("Connected")
+    headers = {
+        "Authorization": f"Bearer {settings.resend_api_key}",
+        "Content-Type": "application/json",
+    }
 
-        logger.info("Starting TLS...")
-        server.starttls()
+    response = requests.post(
+        RESEND_API_URL,
+        json=payload,
+        headers=headers,
+        timeout=30,
+    )
 
-        logger.info("TLS started")
-
-        logger.info("Logging in...")
-        server.login(
-            settings.gmail_address,
-            settings.gmail_app_password,
-        )
-
-        logger.info("Logged in")
-
-        logger.info("Sending email...")
-
-        server.sendmail(
-            settings.gmail_address,
-            recipient,
-            message.as_string(),
-        )
-
-        logger.info("Email sent!")
+    response.raise_for_status()
