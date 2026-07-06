@@ -9,8 +9,6 @@ class Settings(BaseSettings):
     gmail_address: str
     gmail_app_password: str
 
-    resend_api_key: str
-
     retell_webhook_secret: str
 
     class Config:
